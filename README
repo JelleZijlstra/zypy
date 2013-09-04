@@ -1,0 +1,7 @@
+This is an implementation of a subset of Python, written because I felt like
+writing it. I completed a lexer (though I'm sure there are still bugs) and am
+now working on the parser. Once that is done, I may write an interpreter.
+
+The parser is hand-written and does not use a parsing library. This is because
+I'm interested in getting the experience of writing a parser for a moderately
+complicated language from scratch (I previously hand-wrote a Scheme parser).
