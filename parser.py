@@ -19,6 +19,7 @@ def ensure_newline(it, preceding=None, next=None):
 		raise parse_error(msg)
 
 def parse_expression(it):
+	# TODO I suppose we need operators
 	return parse_base_expression(it)
 
 def parse_base_expression(it):

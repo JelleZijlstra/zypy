@@ -10,6 +10,18 @@ class Node(object):
 	def __str__(self):
 		return str(self.value)
 
+	def __eq__(self, other):
+		if not isinstance(other, self.__class__):
+			return False
+		try:
+			for key in self.__dict__:
+				if not hasattr(key, '__call__'):
+					if getattr(self, key) != getattr(other, key):
+						return False
+			return True
+		except AttributeError:
+			return False
+
 #
 # Lexer
 #

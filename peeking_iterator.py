@@ -1,14 +1,18 @@
+import collections
+
 class peeking_iterator(object):
 	def __init__(self, it, end_default = None):
-		self.it = it
-		self.have_next = False
+		self.it = iter(it)
 		self.end_default = end_default
 		self.has_ended = False
+		self.next_list = collections.deque()
 
 	def __iter__(self):
 		return self
 
 	def __get_next(self):
+		if self.has_ended:
+			raise StopIteration()
 		try:
 			return self.it.next()
 		except StopIteration:
@@ -19,17 +23,18 @@ class peeking_iterator(object):
 		return self.__next__()
 
 	def __next__(self):
-		if self.have_next:
-			self.have_next = False
-			return self.next_obj
+		if self.next_list:
+			return self.next_list.popleft()
 		else:
 			return self.__get_next()
 
 	def peek(self):
-		if not self.have_next:
-			self.next_obj = self.__get_next()
-			self.have_next = True
-		return self.next_obj
+		if not self.next_list:
+			self.next_list.append(self.__get_next())
+		return self.next_list[0]
 
 	def has_next(self):
-		return not (self.has_ended and (not self.have_next))
+		return not (self.has_ended and (not self.next_list))
+
+	def push_back(self, item):
+		self.next_list.appendleft(item)
