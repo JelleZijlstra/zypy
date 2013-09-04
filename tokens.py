@@ -1,13 +1,21 @@
 
 def singleton(cls):
+	cls.__init__ = lambda self: None
 	return cls()
 
-class LexerToken(object):
+class Node(object):
 	def __init__(self, value):
 		self.value = value
 
 	def __str__(self):
 		return str(self.value)
+
+#
+# Lexer
+#
+
+class LexerToken(Node):
+	pass
 
 class Keyword(LexerToken):
 	keywords = {}
@@ -54,29 +62,6 @@ AndKeyword = Keyword("and")
 OrKeyword = Keyword("or")
 IsKeyword = Keyword("is")
 GlobalKeyword = Keyword("global")
-
-class StringToken(LexerToken):
-	pass
-
-class IntegerToken(LexerToken):
-	pass
-
-class FloatToken(LexerToken):
-	pass
-
-class ImaginaryToken(LexerToken):
-	def __init__(self, a=0, b=0):
-		self.a = a
-		self.b = b
-
-	def __str__(self):
-		if self.a and self.b:
-			return '(%s+%sj)' % (self.a, self.b)
-		elif self.a:
-			return str(self.a)
-		else:
-			return str(self.b) + 'j'
-
 
 class Operator(LexerToken):
 	operators = {}
@@ -133,7 +118,6 @@ OpeningSquareBracketOperator = Operator("[")
 ClosingSquareBracketOperator = Operator("]")
 CommaOperator = Operator(",")
 DotOperator = Operator(".")
-DoubleDotOperator = Operator("..")
 ColonOperator = Operator(":")
 SemicolonOperator = Operator(";")
 
@@ -169,3 +153,108 @@ class NewlineToken(LexerToken):
 class IndentationToken(LexerToken):
 	def __str__(self):
 		return "<indentation:%d>" % self.value
+
+#
+# Parser
+#
+
+class ASTNode(Node):
+	def __str__(self):
+		# hackish but useful dumping method
+		out = self.__class__.__name__ + '('
+
+		props = []
+		for k, v in self.__dict__.iteritems():
+			# exclude methods
+			if not hasattr(v, '__call__'):
+				props.append("%s=%s" % (k, str(v)))
+
+		out += ','.join(props)
+		return out + ')'
+
+	def __repr__(self):
+		return str(self)
+
+
+class StatementList(ASTNode):
+	def __init__(self, statements=None):
+		if not statements:
+			statements = []
+		self.value = statements
+
+class Statement(ASTNode):
+	pass
+
+class ImportsList(Statement):
+	'''Set of imports given in a single statement. List members should be ImportStatement instances.'''
+	def __init__(self, statements=None):
+		if not statements:
+			statements = []
+		self.value = statements
+
+class ImportStatement(ASTNode):
+	def __init__(self, module_name, from_list=[], level=-1, as_name=None):
+		self.module_name = module_name
+		self.from_list = from_list
+		self.level = level
+		self.as_name = as_name
+
+class WhileStatement(Statement):
+	def __init__(self, condition, statements):
+		self.condition = condition
+		self.statements = statements
+
+@singleton
+class PassStatement(Statement):
+	def __str__(self):
+		return "pass"
+
+@singleton
+class BreakStatement(Statement):
+	def __str__(self):
+		return "break"
+
+@singleton
+class ContinueStatement(Statement):
+	def __str__(self):
+		return "continue"
+
+class Expression(ASTNode):
+	pass
+
+class Variable(Expression):
+	pass
+
+class TupleLiteral(Expression):
+	pass
+
+#
+# Literals
+#
+
+
+class Literal(LexerToken, ASTNode):
+	pass
+
+class StringToken(Literal):
+	pass
+
+class IntegerToken(Literal):
+	pass
+
+class FloatToken(Literal):
+	pass
+
+class ImaginaryToken(Literal):
+	def __init__(self, a=0, b=0):
+		self.a = a
+		self.b = b
+
+	def __str__(self):
+		if self.a and self.b:
+			return '(%s+%sj)' % (self.a, self.b)
+		elif self.a:
+			return str(self.a)
+		else:
+			return str(self.b) + 'j'
+

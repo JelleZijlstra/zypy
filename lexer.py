@@ -1,17 +1,11 @@
-PUNCTUATION_CHARS = set("+-*/%&|^@=></,.()[]{}~:;\"'\\")
+PUNCTUATION_CHARS = set("+-*/%&|^@=></,.!()[]{}~:;\"'\\")
 QUOTE_CHARS = set("'\"")
 
 from peeking_iterator import peeking_iterator
-from lexer_tokens import *
+from tokens import *
 
 class lexer_error(Exception):
 	pass
-
-def is_whitespace(c):
-	return c.isspace(c)
-
-def is_digit(c):
-	return c.isdigit()
 
 def consume_while(it, pred):
 	"""Eat all characters out of the iterator while predicate pred holds true; returns their concatenation"""
@@ -106,6 +100,8 @@ def tokenize(string):
 					yield BarewordToken(brwd)
 		elif c.isdigit():
 			yield consume_number(c, it)
+		elif c == '#':
+			consume_while(it, lambda c: c != '\n')
 		else:
 			raise lexer_error("Unexpected character %s" % c)
 
@@ -228,4 +224,3 @@ def consume_string(it, raw=False, multiline=False, closing="'", closing_count=1)
 def print_tokens(string):
 	for tkn in tokenize(string):
 		print tkn, repr(tkn)
-
