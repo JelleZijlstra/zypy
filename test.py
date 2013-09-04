@@ -1,7 +1,7 @@
 import sys
 
 import lexer
-import parser
+import zypy_parser
 
 if __name__ == '__main__':
 	cmd = sys.argv[1]
@@ -9,10 +9,10 @@ if __name__ == '__main__':
 	if cmd == 'lex':
 		lexer.print_tokens(input)
 	elif cmd == 'parse':
-		print parser.parse(input, True)
+		print zypy_parser.parse(input, True)
 	elif cmd == 'parsefile':
 		file = open(sys.argv[2]).read()
-		print parser.parse(file, True)
+		print zypy_parser.parse(file, True)
 	elif cmd == 'lexfile':
 		file = open(sys.argv[2]).read()
 		print lexer.print_tokens(file)

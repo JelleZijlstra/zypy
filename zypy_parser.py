@@ -18,6 +18,11 @@ def ensure_newline(it, preceding=None, next=None):
 			msg += " following %s" % preceding
 		raise parse_error(msg)
 
+def ensure_follows(it, token, msg=None):
+	next = it.next()
+	if next is not token:
+		raise parse_error("%s: expected %s, got %s" % (msg, token, next))
+
 def parse_expression(it):
 	# TODO I suppose we need operators
 	return parse_base_expression(it)
@@ -65,6 +70,10 @@ def parse_base_expression(it):
 def parse_comprehension(closing=None, name="comprehension"):
 	'''Parse a generator expression, list comprehension, etc.'''
 	pass
+
+def parse_lvalue(it):
+	'''Parse an lvalue (e.g., "a, _", "a, (b, c)")'''
+	raise NotImplementedError()
 
 def parse_colon_and_statement_list(it, level=0):
 	next = it.next()
@@ -227,7 +236,11 @@ def parse_from_statement(it, level=0):
 		return ImportsList([stmt])
 
 def parse_for_statement(it, level=0):
-	pass
+	lvalue = parse_lvalue(it)
+	ensure_follows(it, InKeyword, "for loop")
+	collection = parse_expression(it)
+	body = parse_colon_and_statement_list(it, level=level)
+	return ForStatement(lvalue, collection, body)
 
 def parse_if_statement(it, level=0):
 	pass
@@ -265,7 +278,8 @@ def parse_continue_statement(it, level=0):
 	return ContinueStatement
 
 def parse_return_statement(it, level=0):
-	pass
+	returned = parse_expression(it)
+	return ReturnStatement(returned)
 
 # these should not consume the following newline
 one_line_keyworded_statements = {
@@ -295,12 +309,21 @@ def parse_statement(it, level=0, one_line=False):
 	statement_dict = one_line_keyworded_statements if one_line else keyworded_statements
 	if token in statement_dict:
 		it.next()
-		return statement_dict[token](it, level=level)
+		statement = statement_dict[token](it, level=level)
 		# TODO: consume newline
+		next = it.next()
+		if next in (NewlineToken, SemicolonOperator, EOFToken):
+			return statement
+		else:
+			raise parse_error("Expected newline or semicolon following statement, got %s" % next)
+	elif token is NewlineToken:
+		it.next()
+		return NullStatement
 	else:
 		# assignment, or just an expression
 		# ???
-		pass
+		print token, repr(token)
+		raise NotImplementedError()
 
 def parse_program(it):
 	# TODO: detect encoding. Anything else weird in global scope?
@@ -310,11 +333,9 @@ def parse_program(it):
 
 	return out
 
-def parse(str, do_print=False):
+def parse(str):
 	tokenizer = tokenize(str)
 	pi = peeking_iterator(tokenizer)
 	program = parse_program(pi)
-	if do_print:
-		print program
 	return program
 

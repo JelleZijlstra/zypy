@@ -13,6 +13,9 @@ class Node(object):
 	def __repr__(self):
 		return "<%s: %s>" % (self.__class__.__name__, str(self))
 
+	def __ne__(self, other):
+		return not (self == other)
+
 	def __eq__(self, other):
 		if not isinstance(other, self.__class__):
 			return False
@@ -188,10 +191,6 @@ class ASTNode(Node):
 		out += ','.join(props)
 		return out + ')'
 
-	def __repr__(self):
-		return str(self)
-
-
 class StatementList(ASTNode):
 	def __init__(self, statements=None):
 		if not statements:
@@ -219,6 +218,20 @@ class WhileStatement(Statement):
 	def __init__(self, condition, statements):
 		self.condition = condition
 		self.statements = statements
+
+class ForStatement(Statement):
+	def __init__(self, lvalue, collection, statements):
+		self.lvalue = lvalue
+		self.collection = collection
+		self.statements = statements
+
+class ReturnStatement(Statement):
+	pass
+
+@singleton
+class NullStatement(Statement):
+	def __str__(self):
+		return "<null statement>"
 
 @singleton
 class PassStatement(Statement):
