@@ -77,6 +77,7 @@ AndKeyword = Keyword("and")
 OrKeyword = Keyword("or")
 IsKeyword = Keyword("is")
 GlobalKeyword = Keyword("global")
+UnderscoreKeyword = Keyword("_")
 
 class Operator(LexerToken):
 	operators = {}

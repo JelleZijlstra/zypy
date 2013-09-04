@@ -17,3 +17,5 @@ def test_lines():
 	assert_lexes("while True:", [WhileKeyword, BarewordToken("True"), ColonOperator])
 
 	assert_lexes("'hello'", [StringToken("hello")])
+
+	assert_lexes("a, _ = [1, 2]", [BarewordToken("a"), CommaOperator, UnderscoreKeyword, AssignmentOperator, OpeningSquareBracketOperator, IntegerToken(1), CommaOperator, IntegerToken(2), ClosingSquareBracketOperator])
