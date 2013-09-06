@@ -257,6 +257,25 @@ class Variable(Expression):
 class TupleLiteral(Expression):
 	pass
 
+class GeneratorExpression(Expression):
+	def __init__(self, code, clauses):
+		self.code = code
+		self.clauses = clauses
+
+class ComprehensionClause(ASTNode):
+	def __init__(self, type, condition=None, variable=None, collection=None):
+		self.type = type
+		if type is ForKeyword:
+			assert variable is not None, "for comprehension clause must have variable set"
+			assert collection is not None, "for comprehension clause must have collection set"
+			self.variable = variable
+			self.collection = collection
+		elif type is IfKeyword:
+			assert condition is not None, "if comprehension clause must have condition set"
+			self.condition = condition
+		else:
+			assert False, "invalid comprehension clause type"
+
 #
 # Literals
 #

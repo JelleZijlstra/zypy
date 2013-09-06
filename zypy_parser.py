@@ -32,7 +32,7 @@ def parse_base_expression(it):
 	if isinstance(next, Literal):
 		return next
 	elif isinstance(next, BarewordToken):
-		return Variable(BarewordToken.value)
+		return Variable(next.value)
 	elif next is OpeningParenOperator:
 		# parenthesized expression...
 		next = it.peek()
@@ -54,7 +54,7 @@ def parse_base_expression(it):
 				else:
 					raise parse_error("Unexpected token in tuple literal: %s" % next)
 		elif next is ForKeyword:
-			comprehend = parse_comprehension(closing=ClosingParenOperator, name="generator")
+			comprehend = parse_comprehension(it, closing=ClosingParenOperator, name="generator")
 			return GeneratorExpression(expression, comprehend)
 		else:
 			raise parse_error("Unexpected token following opening parenthesis: %s" % next)
@@ -67,9 +67,27 @@ def parse_base_expression(it):
 	else:
 		raise parse_error("Unexpected token in expression context: %s" % next)
 
-def parse_comprehension(closing=None, name="comprehension"):
+def parse_comprehension(it, closing=None, name="comprehension"):
 	'''Parse a generator expression, list comprehension, etc.'''
-	pass
+	clauses = []
+	it.push_back(ForKeyword)
+
+	while True:
+		next = it.next()
+		if next is closing:
+			break
+		elif next is ForKeyword:
+			variable = parse_expression(it)
+			ensure_follows(it, InKeyword, msg=name)
+			collection = parse_expression(it)
+			clauses.append(ComprehensionClause(ForKeyword, variable=variable, collection=collection))
+		elif next is IfKeyword:
+			condition = parse_expression(it)
+			clauses.append(ComprehensionClause(IfKeyword, condition=condition))
+		else:
+			raise parse_error("Unexpected %s within %s" % (next, name))
+
+	return clauses
 
 def parse_lvalue(it):
 	'''Parse an lvalue (e.g., "a, _", "a, (b, c)")'''
