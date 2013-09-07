@@ -11,7 +11,7 @@ class Node(object):
 		return str(self.value)
 
 	def __repr__(self):
-		return "<%s: %s>" % (self.__class__.__name__, str(self))
+		return str(self)
 
 	def __ne__(self, other):
 		return not (self == other)
@@ -220,10 +220,11 @@ class WhileStatement(Statement):
 		self.statements = statements
 
 class ForStatement(Statement):
-	def __init__(self, lvalue, collection, statements):
+	def __init__(self, lvalue, collection, statements, else_block=None):
 		self.lvalue = lvalue
 		self.collection = collection
 		self.statements = statements
+		self.else_block = else_block
 
 class ReturnStatement(Statement):
 	pass

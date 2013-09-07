@@ -91,7 +91,9 @@ def parse_comprehension(it, closing=None, name="comprehension"):
 
 def parse_lvalue(it):
 	'''Parse an lvalue (e.g., "a, _", "a, (b, c)")'''
-	raise NotImplementedError()
+	# This is also what CPython does. A later stage in the implementation
+	# will have to confirm it's a real lvalue.
+	return parse_expression(it)
 
 def parse_colon_and_statement_list(it, level=0):
 	next = it.next()
@@ -103,7 +105,7 @@ def parse_colon_and_statement_list(it, level=0):
 	if next is not NewlineToken:
 		# they put it on one line, grumble
 		while True:
-			statements.append(parse_statement(it, one_line=True))
+			append_parse_statement(statements, it, one_line=True)
 			next = it.peek()
 			if next is SemicolonOperator:
 				it.next()
@@ -120,17 +122,17 @@ def parse_colon_and_statement_list(it, level=0):
 			raise parse_error("Continuation line must be indented at least as much as starting line")
 
 		indented_level = next.value
+		append_parse_statement(statements, it, level=indented_level)
 
 		while True:
-			statements.append(parse_statement(it, level=indented_level))
-
 			next = it.peek()
+			print locals()
 			if next is EOFToken:
 				break
 			elif next is SemicolonOperator:
 				while True:
 					it.next()
-					statements.append(parse_statement(it, one_line=True))
+					append_parse_statement(statements, it, one_line=True)
 					next = it.peek()
 					if next is not SemicolonOperator:
 						break
@@ -144,7 +146,10 @@ def parse_colon_and_statement_list(it, level=0):
 				elif indentation is NewlineToken:
 					continue
 				elif not isinstance(indentation, IndentationToken):
-					raise parse_error("Expected an indented block, got %s" % indentation)
+					if level == 0:
+						break
+					else:
+						raise parse_error("Expected an indented block, got %s" % indentation)
 				elif indentation.value <= level:
 					break
 				elif indentation.value < indented_level:
@@ -153,10 +158,25 @@ def parse_colon_and_statement_list(it, level=0):
 					raise parse_error("Statement in indented block indented more than previous statement")
 				else:
 					it.next()
-					statements.append(parse_statement(it, level=indented_level))
-					break
+			else:
+				raise parse_error(str(next))
+			append_parse_statement(statements, it, level=indented_level)
 
 	return statements
+
+def parse_closing_else_block(it, level=0):
+	if level > 0:
+		indentation = it.next()
+		assert isinstance(indentation, IndentationToken), "expected indentation: %s" % indentation
+		assert indentation.value <= level
+
+	if (level == 0 or indentation.value == level) and it.peek() is ElseKeyword:
+		it.next()
+		return parse_colon_and_statement_list(it, level=level)
+	else:
+		it.push_back(indentation)
+		it.push_back(NewlineToken)
+		return None
 
 def parse_imported_module_name(it):
 	first = it.next()
@@ -258,7 +278,8 @@ def parse_for_statement(it, level=0):
 	ensure_follows(it, InKeyword, "for loop")
 	collection = parse_expression(it)
 	body = parse_colon_and_statement_list(it, level=level)
-	return ForStatement(lvalue, collection, body)
+	else_block = parse_closing_else_block(it, level=level)
+	return ForStatement(lvalue, collection, body, else_block)
 
 def parse_if_statement(it, level=0):
 	pass
@@ -308,10 +329,10 @@ one_line_keyworded_statements = {
 	BreakKeyword: parse_break_statement,
 	ContinueKeyword: parse_continue_statement,
 	ReturnKeyword: parse_return_statement,
+	FromKeyword: parse_from_statement,
 }
 
 keyworded_statements = {
-	FromKeyword: parse_from_statement,
 	ForKeyword: parse_for_statement,
 	IfKeyword: parse_if_statement,
 	WithKeyword: parse_with_statement,
@@ -320,6 +341,7 @@ keyworded_statements = {
 	DefKeyword: parse_def_statement,
 	TryKeyword: parse_try_statement,
 }
+multiline_keywords = set(keyworded_statements)
 keyworded_statements.update(one_line_keyworded_statements)
 
 def parse_statement(it, level=0, one_line=False):
@@ -328,26 +350,34 @@ def parse_statement(it, level=0, one_line=False):
 	if token in statement_dict:
 		it.next()
 		statement = statement_dict[token](it, level=level)
-		# TODO: consume newline
-		next = it.next()
+		if token in multiline_keywords:
+			# these will consume the newline
+			it.push_back(NewlineToken)
+			return statement
+		next = it.peek()
 		if next in (NewlineToken, SemicolonOperator, EOFToken):
 			return statement
 		else:
 			raise parse_error("Expected newline or semicolon following statement, got %s" % next)
 	elif token is NewlineToken:
 		it.next()
-		return NullStatement
+		return None
 	else:
 		# assignment, or just an expression
 		# ???
 		print token, repr(token)
 		raise NotImplementedError()
 
+def append_parse_statement(list, it, **kwargs):
+	stmt = parse_statement(it, **kwargs)
+	if stmt is not None:
+		list.append(stmt)
+
 def parse_program(it):
 	# TODO: detect encoding. Anything else weird in global scope?
 	out = StatementList()
 	while it.peek() not in (EOFToken, None):
-		out.value.append(parse_statement(it))
+		append_parse_statement(out.value, it)
 
 	return out
 

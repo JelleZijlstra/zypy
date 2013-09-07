@@ -25,16 +25,57 @@ def test_while():
 while 42:
 	import a
 '''
-	assert_parses(str, StatementList([NullStatement, WhileStatement(condition=IntegerToken(42), statements=[ImportsList([ImportStatement("a")])])]))
+	assert_parses(str, StatementList([WhileStatement(condition=IntegerToken(42), statements=[ImportsList([ImportStatement("a")])])]))
 
 def test_generator_expression():
 	str = '''
 while (x for x in y):
 	import a
 '''
-	assert_parses(str, StatementList([NullStatement,
+	assert_parses(str, StatementList([
 		WhileStatement(
 			condition=GeneratorExpression(code=Variable("x"),
 				clauses=[ComprehensionClause(type=ForKeyword, variable=Variable("x"), collection=Variable("y"))]),
-			statements=[ImportsList([ImportStatement("a")])])
-		]))
+			statements=[ImportsList([ImportStatement("a")])])]))
+
+def test_for_else():
+	str = '''
+for x in y:
+	import a
+else:
+	import b
+'''
+	assert_parses(str, StatementList([
+		ForStatement(
+			lvalue=Variable("x"),
+			collection=Variable("y"),
+			statements=[ImportsList([ImportStatement("a")])],
+			else_block=[ImportsList([ImportStatement("b")])]
+		)]))
+
+def test_multiple_lines():
+	str = '''
+while True:
+	import a
+	import b
+
+import c
+'''
+	assert_parses(str, StatementList([
+		WhileStatement(
+			condition=Variable("True"),
+			statements=[ImportsList([ImportStatement("a")]), ImportsList([ImportStatement("b")])]
+		),
+		ImportsList([ImportStatement("c")])]))
+
+def test_multiline_while():
+	str = '''
+while True:
+	break
+	continue
+'''
+	assert_parses(str, StatementList([
+		WhileStatement(
+			condition=Variable("True"),
+			statements=[BreakStatement, ContinueStatement]
+		)]))
