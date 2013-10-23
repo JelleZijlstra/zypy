@@ -290,7 +290,8 @@ def parse_with_statement(it, level=0):
 def parse_while_statement(it, level=0):
 	condition = parse_expression(it)
 	statements = parse_colon_and_statement_list(it, level=level)
-	return WhileStatement(condition, statements)
+	else_block = parse_closing_else_block(it, level=level)
+	return WhileStatement(condition, statements, else_block)
 
 def parse_class_statement(it, level=0):
 	pass

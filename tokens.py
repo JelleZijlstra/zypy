@@ -215,9 +215,10 @@ class ImportStatement(ASTNode):
 		self.as_name = as_name
 
 class WhileStatement(Statement):
-	def __init__(self, condition, statements):
+	def __init__(self, condition, statements, else_block=None):
 		self.condition = condition
 		self.statements = statements
+		self.else_block = else_block
 
 class ForStatement(Statement):
 	def __init__(self, lvalue, collection, statements, else_block=None):
