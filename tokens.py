@@ -188,7 +188,7 @@ class ASTNode(Node):
 			if not hasattr(v, '__call__'):
 				props.append("%s=%s" % (k, str(v)))
 
-		out += ','.join(props)
+		out += ', '.join(props)
 		return out + ')'
 
 class StatementList(ASTNode):
@@ -226,6 +226,27 @@ class ForStatement(Statement):
 		self.collection = collection
 		self.statements = statements
 		self.else_block = else_block
+
+class DefStatement(Statement):
+	def __init__(self, fn_name, statements, args, kwargs, starargs=None, starkwargs=None):
+		self.fn_name = fn_name
+		self.statements = statements
+		self.args = args
+		self.kwargs = kwargs
+		self.starargs = starargs
+		self.starkwargs = starkwargs
+
+class WithStatement(Statement):
+	def __init__(self, context_manager, name, statements):
+		self.context_manager = context_manager
+		self.name = name
+		self.statements = statements
+
+class ClassStatement(Statement):
+	def __init__(self, class_name, bases, statements):
+		self.class_name = class_name
+		self.bases = bases
+		self.statements = statements
 
 class ReturnStatement(Statement):
 	pass

@@ -67,14 +67,15 @@ def tokenize(string):
 			# consume indentation on next line
 			indentation = consume_while(it, lambda c: c.isspace() and c != '\n')
 			if indentation == '':
-				continue
-			chars = set(indentation)
-			if chars == {' '}:
-				yield IndentationToken(len(indentation))
-			elif chars == {'\t'}:
-				yield IndentationToken(len(indentation) * 8)
+				yield IndentationToken(0)
 			else:
-				raise lexer_error("Invalid indentation: %s" % repr(indentation))
+				chars = set(indentation)
+				if chars == {' '}:
+					yield IndentationToken(len(indentation))
+				elif chars == {'\t'}:
+					yield IndentationToken(len(indentation) * 8)
+				else:
+					raise lexer_error("Invalid indentation: %s" % repr(indentation))
 		# ignore whitespace
 		elif c.isspace():
 			continue

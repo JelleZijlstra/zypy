@@ -79,3 +79,71 @@ while True:
 			condition=Variable("True"),
 			statements=[BreakStatement, ContinueStatement]
 		)]))
+
+
+def test_nested_while():
+	str = '''
+while True:
+	break
+	while False:
+		pass
+	pass
+'''
+	assert_parses(str, StatementList([
+		WhileStatement(
+			condition=Variable("True"),
+			statements=[BreakStatement, WhileStatement(
+				condition=Variable('False'),
+				statements=[PassStatement]
+			), PassStatement]
+		)]))
+
+
+def test_def():
+	str = '''
+def foo(x):
+	pass
+'''
+	assert_parses(str, StatementList([
+		DefStatement('foo', [PassStatement], ['x'], {}, None, None)
+	]))
+
+	str = '''
+def foo(x, y=3, *args, **kwargs):
+	pass
+'''
+	assert_parses(str, StatementList([
+		DefStatement('foo', [PassStatement], ['x'], {'y': IntegerToken(3)}, 'args', 'kwargs')
+	]))
+
+def test_with():
+	str = '''
+with x as y:
+	pass
+'''
+	assert_parses(str, StatementList([
+		WithStatement(Variable('x'), 'y', [PassStatement])
+	]))
+	str = '''
+with x:
+	pass
+'''
+	assert_parses(str, StatementList([
+		WithStatement(Variable('x'), None, [PassStatement])
+	]))
+
+def test_class():
+	str = '''
+class foo(object):
+	pass
+'''
+	assert_parses(str, StatementList([
+		ClassStatement('foo', [Variable('object')], [PassStatement])
+	]))
+	str = '''
+class foo(object, 42):
+	pass
+'''
+	assert_parses(str, StatementList([
+		ClassStatement('foo', [Variable('object'), IntegerToken(42)], [PassStatement])
+	]))

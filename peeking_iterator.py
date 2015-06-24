@@ -1,7 +1,7 @@
 import collections
 
 class peeking_iterator(object):
-	def __init__(self, it, end_default = None):
+	def __init__(self, it, end_default=None):
 		self.it = iter(it)
 		self.end_default = end_default
 		self.has_ended = False

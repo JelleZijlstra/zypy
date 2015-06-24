@@ -12,7 +12,6 @@ def ensure_newline(it, preceding=None, next=None):
 	if next is None:
 		next = it.next()
 	if next is not NewlineToken and next is not EOFToken:
-		print next
 		msg = "Expected newline"
 		if preceding:
 			msg += " following %s" % preceding
@@ -126,7 +125,6 @@ def parse_colon_and_statement_list(it, level=0):
 
 		while True:
 			next = it.peek()
-			print locals()
 			if next is EOFToken:
 				break
 			elif next is SemicolonOperator:
@@ -165,16 +163,16 @@ def parse_colon_and_statement_list(it, level=0):
 	return statements
 
 def parse_closing_else_block(it, level=0):
-	if level > 0:
-		indentation = it.next()
-		assert isinstance(indentation, IndentationToken), "expected indentation: %s" % indentation
-		assert indentation.value <= level
+	indentation = it.next()
+	assert isinstance(indentation, IndentationToken), "expected indentation: %s" % indentation
+	assert indentation.value <= level
 
 	if (level == 0 or indentation.value == level) and it.peek() is ElseKeyword:
 		it.next()
 		return parse_colon_and_statement_list(it, level=level)
 	else:
-		it.push_back(indentation)
+		if indentation is not None:
+			it.push_back(indentation)
 		it.push_back(NewlineToken)
 		return None
 
@@ -285,7 +283,18 @@ def parse_if_statement(it, level=0):
 	pass
 
 def parse_with_statement(it, level=0):
-	pass
+	context_manager = parse_expression(it)
+	next = it.peek()
+	if next is AsKeyword:
+		it.next()
+		token = it.next()
+		if not isinstance(token, BarewordToken):
+			raise parse_error('Expected a name')
+		name = token.value
+	else:
+		name = None
+	statements = parse_colon_and_statement_list(it, level=level)
+	return WithStatement(context_manager, name, statements)
 
 def parse_while_statement(it, level=0):
 	condition = parse_expression(it)
@@ -294,10 +303,96 @@ def parse_while_statement(it, level=0):
 	return WhileStatement(condition, statements, else_block)
 
 def parse_class_statement(it, level=0):
-	pass
+	cls_name = it.next()
+	if not isinstance(cls_name, BarewordToken):
+		raise parse_error('Expected a function name (not %r)' % func_name)
+
+	paren = it.next()
+	if paren is not OpeningParenOperator:
+		raise parse_error('Expected an opening parenthesis (not %r)' % paren)
+
+	bases = []
+	while True:
+		token = it.peek()
+		if token is ClosingParenOperator:
+			it.next()
+			break
+		bases.append(parse_expression(it))
+		token = it.next()
+		if token is ClosingParenOperator:
+			break
+		elif token is CommaOperator:
+			pass
+		else:
+			raise parse_error('Unexpected %r' % token)
+
+	statements = parse_colon_and_statement_list(it, level=level)
+	return ClassStatement(cls_name.value, bases, statements)
+
 
 def parse_def_statement(it, level=0):
-	pass
+	func_name = it.next()
+	if not isinstance(func_name, BarewordToken):
+		raise parse_error('Expected a function name (not %r)' % func_name)
+
+	paren = it.next()
+	if paren is not OpeningParenOperator:
+		raise parse_error('Expected an opening parenthesis (not %r)' % paren)
+
+	args = []
+	kwargs = {}
+	starargs = None
+	starkwargs = None
+	# 0 for args, 1 for kwargs, 2 for *args, 3 for **kwargs
+	last_arg_kind = 0
+
+	while True:
+		token = it.next()
+		if token is ClosingParenOperator:
+			break
+		elif token is MultiplyOperator:
+			if last_arg_kind > 2:
+				raise parse_error('Unexpected args')
+			last_arg_kind += 1
+			arg_name = it.next()
+			if not isinstance(arg_name, BarewordToken):
+				raise parse_error('Expected an argument name')
+			starargs = arg_name.value
+		elif token is ExponentOperator:
+			if last_arg_kind > 3:
+				raise parse_error('Unexpected kwargs')
+			last_arg_kind += 1
+			arg_name = it.next()
+			if not isinstance(arg_name, BarewordToken):
+				raise parse_error('Expected an argument name')
+			starkwargs = arg_name.value
+		elif isinstance(token, BarewordToken):
+			arg_name = token.value
+			next = it.peek()
+			if next in (CommaOperator, ClosingParenOperator):
+				if last_arg_kind > 0:
+					raise parse_error('Unexpected arg')
+				args.append(arg_name)
+			elif next is AssignmentOperator:
+				if last_arg_kind > 1:
+					raise parse_error('Unexpected kwarg')
+				last_arg_kind = 1
+				it.next()
+				value = parse_expression(it)
+				kwargs[arg_name] = value
+			else:
+				raise parse_error('Unexpected %r' % next)
+		else:
+			raise parse_error('Unexpected %r' % token)
+
+		next_token = it.next()
+		if next_token is ClosingParenOperator:
+			break
+		elif next_token is not CommaOperator:
+			raise parse_error('Unexpected %r' % next_token)
+
+	statements = parse_colon_and_statement_list(it, level=level)
+	return DefStatement(func_name.value, statements, args, kwargs, starargs, starkwargs)
 
 def parse_try_statement(it, level=0):
 	pass
@@ -317,6 +412,9 @@ def parse_break_statement(it, level=0):
 def parse_continue_statement(it, level=0):
 	return ContinueStatement
 
+def parse_pass_statement(it, level=0):
+	return PassStatement
+
 def parse_return_statement(it, level=0):
 	returned = parse_expression(it)
 	return ReturnStatement(returned)
@@ -329,6 +427,7 @@ one_line_keyworded_statements = {
 	RaiseKeyword: parse_raise_statement,
 	BreakKeyword: parse_break_statement,
 	ContinueKeyword: parse_continue_statement,
+	PassKeyword: parse_pass_statement,
 	ReturnKeyword: parse_return_statement,
 	FromKeyword: parse_from_statement,
 }
@@ -347,6 +446,10 @@ keyworded_statements.update(one_line_keyworded_statements)
 
 def parse_statement(it, level=0, one_line=False):
 	token = it.peek()
+	if isinstance(token, IndentationToken):
+		it.next()
+		token = it.peek()
+
 	statement_dict = one_line_keyworded_statements if one_line else keyworded_statements
 	if token in statement_dict:
 		it.next()
@@ -360,7 +463,7 @@ def parse_statement(it, level=0, one_line=False):
 			return statement
 		else:
 			raise parse_error("Expected newline or semicolon following statement, got %s" % next)
-	elif token is NewlineToken:
+	elif token is NewlineToken or token is EOFToken:
 		it.next()
 		return None
 	else:
